@@ -20,6 +20,10 @@ app.get("/users", (req, res) => {
   });
 });
 
+const userRoutes = require("./routes/user");
+app.use("/api", userRoutes);
+
+
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
