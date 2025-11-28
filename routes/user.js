@@ -5,15 +5,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 /* ===================================
-              REGISTER
+                REGISTER
    =================================== */
 router.post("/register", (req, res) => {
   const { first_name, last_name, email, password, role } = req.body;
 
-  if (!first_name || !last_name || !email || !password) {
-    return res.status(400).json({ msg: "All fields are required" });
-  }
+  // Validate required fields
+if (!first_name || !last_name || !email || !password || !role) {
+  return res.status(400).json({ msg: "All fields are required" });
+}
 
+  // Check if user exists
   db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
     if (err) return res.status(500).json(err);
 
@@ -21,13 +23,18 @@ router.post("/register", (req, res) => {
       return res.status(400).json({ msg: "Email already exists" });
     }
 
+    // Hash password
     const hashedPassword = bcrypt.hashSync(password, 10);
 
+    // Insert new user
     db.query(
       "INSERT INTO users (first_name, last_name, email, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
       [first_name, last_name, email, hashedPassword, role],
       (err, result) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+          console.log("MYSQL ERROR:", err);
+          return res.status(500).json(err);
+        }
         res.json({ msg: "User registered successfully" });
       }
     );
@@ -44,7 +51,8 @@ router.post("/login", (req, res) => {
     return res.status(400).json({ msg: "All fields required" });
   }
 
-  db.query("SELECT * OF users WHERE email = ?", [email], (err, results) => {
+  // Find user
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
     if (err) return res.status(500).json(err);
 
     if (results.length === 0) {
@@ -52,15 +60,18 @@ router.post("/login", (req, res) => {
     }
 
     const user = results[0];
+
+    // Compare passwords
     const validPassword = bcrypt.compareSync(password, user.password);
 
     if (!validPassword) {
       return res.status(400).json({ msg: "Wrong password" });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       {
-        user_id: user.user_id,
+        id: user.user_id,
         email: user.email,
         role: user.role,
         first_name: user.first_name,
