@@ -1,3 +1,4 @@
+
 const mysql = require('mysql2');
 
 const db = mysql.createPool({
@@ -5,6 +6,5 @@ const db = mysql.createPool({
     user:'root',
     password:'123456',
     database:'healthpai'
-});
 
 module.exports = db;
