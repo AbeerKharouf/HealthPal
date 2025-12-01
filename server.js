@@ -28,12 +28,9 @@ app.use("/api", userRoutes);
 
 console.log("🔥 appointments ROUTE MOUNTED");
 
+const doctorRouter = require("./routes/doctor"); // أو doctors حسب اسم الملف
+app.use("/doctor", doctorRouter);
 
-const appointmentsRouter = require("./routes/appointments");
-app.use("/appointments", appointmentsRouter);
-
-const doctorsRouter = require("./routes/doctor");
-app.use("/doctors", doctorsRouter);
 
 
 app.listen(5000, () => {
