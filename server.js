@@ -5,6 +5,8 @@ const userRoutes = require("./routes/user");
 
 const app = express();
 
+
+
 app.use(cors());
 app.use(express.json());
 
@@ -23,6 +25,12 @@ app.get("/users", (req, res) => {
 
 // مسارات المستخدم
 app.use("/api", userRoutes);
+
+const appointmentsRouter = require("./routes/appointments");
+app.use("/appointments", appointmentsRouter);
+
+
+
 
 app.listen(5000, () => {
   console.log("Server running on port 5000");
