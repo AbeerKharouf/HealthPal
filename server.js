@@ -26,10 +26,14 @@ app.get("/users", (req, res) => {
 // مسارات المستخدم
 app.use("/api", userRoutes);
 
+console.log("🔥 appointments ROUTE MOUNTED");
+
+
 const appointmentsRouter = require("./routes/appointments");
 app.use("/appointments", appointmentsRouter);
 
-
+const doctorsRouter = require("./routes/doctor");
+app.use("/doctors", doctorsRouter);
 
 
 app.listen(5000, () => {

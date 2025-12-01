@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 
+console.log("🔥 appointments.js WAS LOADED");
+
 // ============================
 // إنشاء موعد جديد (Patient يحجز)
 // POST /appointments
