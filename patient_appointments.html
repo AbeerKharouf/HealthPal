@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Book Appointment - HealthPal</title>
+    <style>
+        body {
+            font-family: "Arial";
+            direction: ltr;
+            background: #f8f8f8;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        h2 {
+            text-align: center;
+        }
+        label {
+            margin-top: 10px;
+            font-weight: bold;
+            display: block;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+        }
+        button {
+            padding: 10px 15px;
+            margin-top: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background: #0066cc;
+            color: white;
+            font-size: 16px;
+        }
+        .day-box {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #eef3ff;
+            border: 1px solid #bcd;
+        }
+        .slot-btn {
+            background: white;
+            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .slot-btn:hover {
+            background: #ddd;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Book an Appointment</h2>
+
+    <!-- Temporary until we add login -->
+    <label>Patient ID (temporary):</label>
+    <input type="number" id="patientId" placeholder="e.g., 1">
+
+    <label>Select Doctor:</label>
+    <select id="doctorSelect">
+        <option value="">-- Select a Doctor --</option>
+    </select>
+
+    <button id="showSlotsBtn">Show Available Slots</button>
+
+    <div id="availableSlots"></div>
+
+    <!-- Notes section appears after selecting a slot -->
+    <div id="notesSection" style="display:none;">
+        <label>Appointment Notes:</label>
+        <textarea id="notesInput" rows="3" placeholder="Example: headache, symptoms..."></textarea>
+        <button id="confirmBookingBtn">Confirm Appointment</button>
+    </div>
+
+    <div id="msg"></div>
+
+</div>
+
+<script>
+    const API = "http://localhost:5000";
+
+    const doctorSelect     = document.getElementById("doctorSelect");
+    const showSlotsBtn     = document.getElementById("showSlotsBtn");
+    const availableSlots   = document.getElementById("availableSlots");
+    const notesSection     = document.getElementById("notesSection");
+    const notesInput       = document.getElementById("notesInput");
+    const confirmBookingBtn= document.getElementById("confirmBookingBtn");
+    const msg              = document.getElementById("msg");
+    const patientIdInput   = document.getElementById("patientId");
+
+    let selectedDoctor = null;
+    let selectedDate   = null;
+    let selectedTime   = null;
+
+    // ========== 1) Load doctors list ==========
+    async function loadDoctors() {
+        try {
+            const res = await fetch(`${API}/doctor`);
+            const data = await res.json();
+
+            data.forEach(doc => {
+                const opt = document.createElement("option");
+                opt.value = doc.doctor_id;
+                opt.textContent = `${doc.first_name} ${doc.last_name} (${doc.specialty})`;
+                doctorSelect.appendChild(opt);
+            });
+
+        } catch (err) {
+            msg.textContent = "Failed to load doctors list.";
+            msg.className = "error";
+        }
+    }
+
+    // ========== 2) Load all available slots ==========
+    async function loadAvailableAll() {
+        msg.textContent = "";
+        availableSlots.innerHTML = "";
+        notesSection.style.display = "none";
+
+        const doctorId = doctorSelect.value;
+        if (!doctorId) {
+            msg.textContent = "Please select a doctor.";
+            msg.className = "error";
+            return;
+        }
+
+        selectedDoctor = doctorId;
+
+        const res = await fetch(`${API}/appointments/available-all/${doctorId}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+            msg.textContent = data.msg || "No available slots.";
+            msg.className = "error";
+            return;
+        }
+
+        // Display days + slots
+        data.available.forEach(day => {
+            const box = document.createElement("div");
+            box.className = "day-box";
+
+            box.innerHTML = `<h3>${day.day} (${day.date})</h3>`;
+
+            day.slots.forEach(time => {
+                const btn = document.createElement("button");
+                btn.className = "slot-btn";
+                btn.textContent = time;
+
+                btn.onclick = () => {
+                    selectedDate = day.date;
+                    selectedTime = time;
+                    notesSection.style.display = "block";
+                    msg.innerHTML = `Selected slot: <b>${day.date}</b> at <b>${time}</b>`;
+                    msg.className = "success";
+                };
+
+                box.appendChild(btn);
+            });
+
+            availableSlots.appendChild(box);
+        });
+    }
+
+    // ========== 3) Confirm booking ==========
+    async function confirmBooking() {
+        if (!selectedDoctor || !selectedDate || !selectedTime) {
+            msg.textContent = "Please select a slot first.";
+            msg.className = "error";
+            return;
+        }
+
+        const patientId = patientIdInput.value;
+        if (!patientId) {
+            msg.textContent = "Please enter patient ID.";
+            msg.className = "error";
+            return;
+        }
+
+        const datetime = `${selectedDate} ${selectedTime}:00`;
+
+        const body = {
+            patient_id: patientId,
+            doctor_id: selectedDoctor,
+            appointment_datetime: datetime,
+            notes: notesInput.value
+        };
+
+        const res = await fetch(`${API}/appointments`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            msg.textContent = data.msg || "Failed to book appointment.";
+            msg.className = "error";
+            return;
+        }
+
+        msg.textContent = "Appointment booked successfully (PENDING)";
+        msg.className = "success";
+
+        notesInput.value = "";
+        notesSection.style.display = "none";
+    }
+
+    loadDoctors();
+    showSlotsBtn.onclick = loadAvailableAll;
+    confirmBookingBtn.onclick = confirmBooking;
+
+</script>
+
+</body>
+</html>
