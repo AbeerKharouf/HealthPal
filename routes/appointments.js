@@ -1,15 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
+const translate = require("translate-google");
 
-console.log("🔥 appointments.js WAS LOADED");
+
+
+console.log(" appointments.js WAS LOADED");
 
 // ============================
 // إنشاء موعد جديد (Patient يحجز)
 // POST /appointments
 // ============================
 router.post("/", (req, res) => {
-  const { patient_id, doctor_id, appointment_datetime, notes } = req.body;
+  const { patient_id, doctor_id, appointment_datetime, call_mode, notes } = req.body;
 
   if (!patient_id || !doctor_id || !appointment_datetime) {
     return res.status(400).json({
@@ -65,16 +68,16 @@ router.post("/", (req, res) => {
         }
 
         // ============================
-        //  4) إدخال الموعد
+        //  4) إدخال الموعد + call_mode
         // ============================
         const insertQuery = `
-          INSERT INTO appointments (patient_id, doctor_id, appointment_datetime, status, notes)
-          VALUES (?, ?, ?, 'PENDING', ?)
+          INSERT INTO appointments (patient_id, doctor_id, appointment_datetime, call_mode, status, notes)
+          VALUES (?, ?, ?, ?, 'PENDING', ?)
         `;
 
         db.query(
           insertQuery,
-          [patient_id, doctor_id, appointment_datetime, notes || null],
+          [patient_id, doctor_id, appointment_datetime, call_mode || "video", notes || null],
           (err, result) => {
             if (err) return res.status(500).json(err);
 
@@ -99,6 +102,7 @@ router.get("/", (req, res) => {
       a.patient_id,
       a.doctor_id,
       a.appointment_datetime,
+      a.call_mode,              
       a.status,
       a.notes,
       a.created_at,
@@ -136,6 +140,7 @@ router.get("/doctor/:doctor_id", (req, res) => {
       appointments.patient_id,
       appointments.doctor_id,
       appointments.appointment_datetime,
+      appointments.call_mode,        
       appointments.status,
       appointments.notes,
       appointments.created_at
@@ -166,6 +171,7 @@ router.get("/pending/:doctor_id", (req, res) => {
     SELECT 
       a.id,
       a.appointment_datetime,
+      a.call_mode,                 
       a.notes,
       a.status,
 
@@ -191,7 +197,6 @@ router.get("/pending/:doctor_id", (req, res) => {
 
 // ============================
 // Approve appointment
-// PUT /appointments/approve/:appointment_id
 // ============================
 router.put("/approve/:appointment_id", (req, res) => {
   const id = req.params.appointment_id;
@@ -210,7 +215,6 @@ router.put("/approve/:appointment_id", (req, res) => {
 
 // ============================
 // Reject appointment
-// PUT /appointments/reject/:appointment_id
 // ============================
 router.put("/reject/:appointment_id", (req, res) => {
   const id = req.params.appointment_id;
@@ -321,5 +325,33 @@ router.get("/available-all/:doctor_id", (req, res) => {
     });
   });
 });
+// ============================
+// Translation API
+// POST /appointments/translate
+// ============================
+router.post("/translate", async (req, res) => {
+  try {
+    const { text, target } = req.body;
+
+    if (!text || !target) {
+      return res.status(400).json({ msg: "text and target are required" });
+    }
+
+    const result = await translate(text, { to: target });
+
+    res.json({
+      original: text,
+      translated: result,
+      target_language: target
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      msg: "Translation failed",
+      error: error.message
+    });
+  }
+});
+
 
 module.exports = router;
