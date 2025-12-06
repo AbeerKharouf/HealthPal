@@ -1,8 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const db = require("./config/db");
-const userRoutes = require("./routes/user");
 
+// Routes
+const userRoutes = require("./routes/user");
+const mentalHealth = require("./routes/mentalHealth");
 
 const app = express();
 
@@ -12,35 +14,32 @@ app.use(express.json());
 // اختبار الاتصال
 app.get("/", (req, res) => {
   res.send("HealthPal API is running...");
-
 });
 
-
-
-// مثال: جلب كل المستخدمين
+// جلب كل المستخدمين (اختياري)
 app.get("/users", (req, res) => {
-  db.query("SELECT * FROM users", (err, result) => {
+  db.query("SELECT * FROM user", (err, result) => {
     if (err) return res.json(err);
     res.json(result);
   });
 });
 
-
-// مسارات المستخدم
-
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-});
-
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-});
-
-
-
+// ================= ROUTES =================
+console.log("Loaded mentalHealth router");
 app.use("/api", userRoutes);
+app.use("/mental-health", mentalHealth);
 
+
+const supportGroups = require("./routes/supportGroups");
+console.log("Support Groups Router Loaded");
+app.use("/support-groups", supportGroups);
+
+const anonymousChat = require("./routes/anonymousChat");
+app.use("/anonymous-chat", anonymousChat);
+
+// ===========================================
+
+// تشغيل السيرفر (مرة واحدة فقط)
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
-
