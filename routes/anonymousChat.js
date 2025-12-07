@@ -112,4 +112,21 @@ router.delete("/delete-session/:session_id", (req, res) => {
     });
   });
 });
+// Get all sessions for a specific therapist
+router.get("/sessions/:therapist_id", (req, res) => {
+  const therapist_id = req.params.therapist_id;
+
+  const query = `
+    SELECT session_id, therapist_id, session_code, created_at
+    FROM anonymous_sessions
+    WHERE therapist_id = ?
+    ORDER BY created_at DESC
+  `;
+
+  db.query(query, [therapist_id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
+
 module.exports = router;

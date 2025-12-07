@@ -20,14 +20,19 @@
         border-bottom: 1px solid #ccc;
     }
 
-    .chat-box {
-        flex: 1;
-        padding: 10px;
-        overflow-y: auto;
-        background: #e9ecf1;
-        display: flex;
-        flex-direction: column;
-    }
+ .chat-box {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    background: #e9ecf1;
+    display: flex;
+    flex-direction: column;
+
+    min-height: 400px;   
+    max-height: 70vh;    
+}
+
+
 
     .msg {
         max-width: 70%;
@@ -48,15 +53,16 @@
     }
 
     .input-area {
+        height: 120px;
         display: flex;
         background: white;
-        padding: 10px;
+        padding: 20px;
         border-top: 1px solid #ccc;
     }
 
     input, select {
         flex: 1;
-        padding: 10px;
+        padding: 22px;
         font-size: 15px;
     }
 
@@ -81,13 +87,19 @@
 <div class="box">
     <h3>Start Anonymous Session</h3>
 
-    <!-- 📌 بدل input عملته dropdown -->
     <select id="therapist_id">
         <option value="" disabled selected>Loading therapists...</option>
     </select>
 
     <button onclick="createSession()">Create Session</button>
     <p id="session_msg"></p>
+
+    <hr>
+
+    <h4>Continue Existing Session</h4>
+    <input id="existing_session_id" placeholder="Enter Session ID">
+    <button onclick="continueSession()">Continue Session</button>
+    <p id="continue_msg"></p>
 </div>
 
 <!-- Patient Options -->
@@ -111,13 +123,13 @@
 let currentSession = null;
 let sessionEnded = false;
 
-// 🎯 تحميل قائمة الأخصائيين تلقائياً
+// Load therapists list
 async function loadTherapists() {
     let res = await fetch("http://localhost:5000/therapists/all");
     let data = await res.json();
 
     let select = document.getElementById("therapist_id");
-    select.innerHTML = ""; // امسح القديم
+    select.innerHTML = "";
 
     data.forEach(t => {
         let option = document.createElement("option");
@@ -128,7 +140,7 @@ async function loadTherapists() {
 }
 loadTherapists();
 
-// Create session
+// Create new session
 function createSession() {
     const therapist_id = document.getElementById("therapist_id").value;
 
@@ -145,8 +157,30 @@ function createSession() {
             "Session Created! Code: " + data.session_code + " | ID: " + data.session_id;
 
         document.getElementById("options").style.display = "block";
+
         loadMessages();
     });
+}
+
+// Continue existing session
+function continueSession() {
+    const sessionId = document.getElementById("existing_session_id").value;
+
+    if (!sessionId.trim()) {
+        alert("Please enter a session ID");
+        return;
+    }
+
+    currentSession = sessionId;
+    sessionEnded = false;
+    document.getElementById("msg_input").disabled = false;
+
+    document.getElementById("continue_msg").innerText =
+        "Loaded Session #" + sessionId;
+
+    document.getElementById("options").style.display = "block";
+
+    loadMessages();
 }
 
 // Load messages
@@ -193,7 +227,9 @@ function sendPatientMessage() {
     });
 }
 
-function keepConversation() { alert("You can continue chatting 🙂"); }
+function keepConversation() { 
+    alert("You can continue chatting 🙂"); 
+}
 
 function endSession() {
     sessionEnded = true;
