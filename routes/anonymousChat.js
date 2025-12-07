@@ -85,5 +85,31 @@ router.delete("/delete-session/:session_id", (req, res) => {
     }
   );
 });
+//End session (messages kept)
+router.post("/end-session", (req, res) => {
+  res.json({ msg: "Session ended (messages kept)" });
+});
 
+// Keep conversation
+router.post("/keep-conversation", (req, res) => {
+  res.json({ msg: "Conversation kept successfully" });
+});
+
+// Delete session + messages
+router.delete("/delete-session/:session_id", (req, res) => {
+  const id = req.params.session_id;
+
+  db.query("DELETE FROM anonymous_chat_messages WHERE session_id = ?", [id], (err) => {
+    if (err) return res.status(500).json(err);
+
+    db.query("DELETE FROM anonymous_sessions WHERE session_id = ?", [id], (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      if (result.affectedRows === 0)
+        return res.status(404).json({ msg: "Session not found" });
+
+      res.json({ msg: "Session deleted successfully" });
+    });
+  });
+});
 module.exports = router;

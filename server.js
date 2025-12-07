@@ -37,6 +37,10 @@ app.use("/support-groups", supportGroups);
 const anonymousChat = require("./routes/anonymousChat");
 app.use("/anonymous-chat", anonymousChat);
 
+const therapistRoutes = require("./routes/therapist");
+app.use("/therapists", therapistRoutes);
+
+
 // ===========================================
 
 // تشغيل السيرفر (مرة واحدة فقط)
