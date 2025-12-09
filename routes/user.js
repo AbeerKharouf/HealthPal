@@ -68,4 +68,25 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+// POST /api/login
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  if(!email || !password) return res.status(400).json({ message: "All fields required" });
+
+  try {
+    const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+
+    if(rows.length === 0) return res.status(400).json({ message: "User not found" });
+
+    const user = rows[0];
+    const valid = bcrypt.compareSync(password, user.password);
+    if(!valid) return res.status(400).json({ message: "Wrong password" });
+
+    res.json({ message: `Welcome ${user.role} ${user.first_name}`, user });
+  } catch(err) {
+    console.error("Login error:", err); // ⚠️ راح يظهر كل الخطأ بالترمنال
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
