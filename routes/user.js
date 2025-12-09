@@ -1,98 +1,71 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../config/db");
+const db = require("../config/db"); // mysql2/promise
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
-/* ===================================
-                REGISTER
-   =================================== */
-router.post("/register", (req, res) => {
-  const { first_name, last_name, email, password, role } = req.body;
+// POST /api/signup
+router.post("/signup", async (req, res) => {
+  try {
+    const { first_name, last_name, email, password, role, extraData } =
+      req.body;
 
-  // Validate required fields
-if (!first_name || !last_name || !email || !password || !role) {
-  return res.status(400).json({ msg: "All fields are required" });
-}
-
-  // Check if user exists
-  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
-    if (err) return res.status(500).json(err);
-
-    if (results.length > 0) {
-      return res.status(400).json({ msg: "Email already exists" });
+    // تحقق من الحقول الأساسية
+    if (!first_name || !last_name || !email || !password || !role) {
+      return res
+        .status(400)
+        .json({ message: "All required fields must be filled" });
     }
 
-    // Hash password
-    const hashedPassword = bcrypt.hashSync(password, 10);
-
-    // Insert new user
-    db.query(
-      "INSERT INTO users (first_name, last_name, email, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-      [first_name, last_name, email, hashedPassword, role],
-      (err, result) => {
-        if (err) {
-          console.log("MYSQL ERROR:", err);
-          return res.status(500).json(err);
-        }
-        res.json({ msg: "User registered successfully" });
-      }
+    // تحقق من البريد الإلكتروني
+    const [existing] = await db.query(
+      "SELECT email FROM users WHERE email = ?",
+      [email]
     );
-  });
-});
 
-/* ===================================
-                LOGIN
-   =================================== */
-router.post("/login", (req, res) => {
-  const { email, password } = req.body;
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
-  if (!email || !password) {
-    return res.status(400).json({ msg: "All fields required" });
+    // تشفير كلمة السر
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // إدخال البيانات الأساسية في جدول users
+    const [userResult] = await db.query(
+      "INSERT INTO users (first_name, last_name, email, password, role) VALUES (?, ?, ?, ?, ?)",
+      [first_name, last_name, email, hashedPassword, role]
+    );
+    const userId = userResult.insertId;
+
+    // إدخال البيانات الخاصة حسب الدور
+    if (role === "doctor") {
+      await db.query(
+        "INSERT INTO doctors (user_id, specialty, phone, clinic) VALUES (?, ?, ?, ?)",
+        [userId, extraData.specialty, extraData.phone, extraData.clinic || null]
+      );
+    } else if (role === "therapist") {
+      await db.query(
+        "INSERT INTO therapists (user_id, specialty, phone) VALUES (?, ?, ?)",
+        [userId, extraData.specialty, extraData.phone]
+      );
+    } else if (role === "patient") {
+      await db.query(
+        "INSERT INTO patients (user_id, age, gender) VALUES (?, ?, ?)",
+        [userId, extraData.age, extraData.gender]
+      );
+    } else if (role === "donor") {
+      await db.query("INSERT INTO donors (user_id, blood_type) VALUES (?, ?)", [
+        userId,
+        extraData.blood_type,
+      ]);
+    } else {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    res.json({ message: "User registered successfully" });
+  } catch (err) {
+    console.error("Error in /signup:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-
-  // Find user
-  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
-    if (err) return res.status(500).json(err);
-
-    if (results.length === 0) {
-      return res.status(400).json({ msg: "User not found" });
-    }
-
-    const user = results[0];
-
-    // Compare passwords
-    const validPassword = bcrypt.compareSync(password, user.password);
-
-    if (!validPassword) {
-      return res.status(400).json({ msg: "Wrong password" });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        id: user.user_id,
-        email: user.email,
-        role: user.role,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      },
-      "secretkey",
-      { expiresIn: "1d" }
-    );
-
-    res.json({
-      msg: "Login successful",
-      token,
-      user: {
-        user_id: user.user_id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  });
 });
 
 module.exports = router;
