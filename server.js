@@ -1,21 +1,21 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const db = require("./config/db");
-const userRoutes = require("./routes/user");
-
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+
+// ملفات static (HTML, CSS, JS)
+app.use(express.static(path.join(__dirname, "public")));
 
 // اختبار الاتصال
 app.get("/", (req, res) => {
   res.send("HealthPal API is running...");
-
 });
-
-
 
 // مثال: جلب كل المستخدمين
 app.get("/users", (req, res) => {
@@ -25,22 +25,11 @@ app.get("/users", (req, res) => {
   });
 });
 
-
-// مسارات المستخدم
-
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-});
-
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-});
-
-
-
+// Routes
+const userRoutes = require("./routes/user");
 app.use("/api", userRoutes);
 
+// Start server
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
-
