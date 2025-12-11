@@ -43,6 +43,10 @@ app.use("/therapists", therapistRoutes);
 const organizationRoutes = require("./routes/organization");
 app.use("/organizations", organizationRoutes);
 
+const missions = require("./routes/missions");
+app.use("/missions", missions);
+
+app.use("/ads", require("./routes/ads"));
 
 // ===========================================
 
