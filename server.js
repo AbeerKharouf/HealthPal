@@ -29,6 +29,21 @@ app.use("/api", userRoutes);
 const doctorRouter = require("./routes/doctor");
 app.use("/doctor", doctorRouter);
 
+const medicalCasesRouter = require("./routes/medicalCases");
+app.use("/medical-cases", medicalCasesRouter);
+
+const donationsRouter = require("./routes/donations");
+app.use("/donate", donationsRouter);
+
+const medicalCasesRoutes = require("./routes/medicalHistory");
+app.use("/medical-cases", medicalCasesRoutes);
+
+app.use("/invoices", require("./routes/invoices"));
+
+const feedbackRoutes = require("./routes/feedback");
+app.use("/feedback", feedbackRoutes);
+
+
 
 app.listen(5000, () => {
   console.log("Server running on port 5000");
