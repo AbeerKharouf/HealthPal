@@ -40,6 +40,9 @@ app.use("/anonymous-chat", anonymousChat);
 const therapistRoutes = require("./routes/therapist");
 app.use("/therapists", therapistRoutes);
 
+const organizationRoutes = require("./routes/organization");
+app.use("/organizations", organizationRoutes);
+
 
 // ===========================================
 
