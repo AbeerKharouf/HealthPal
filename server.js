@@ -9,15 +9,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ملفات static (HTML, CSS, JS)
+// Static files (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, "public")));
 
-// اختبار الاتصال
+// Test root
 app.get("/", (req, res) => {
   res.send("HealthPal API is running...");
 });
 
-// مثال: جلب كل المستخدمين
+// Example: Get all users
 app.get("/users", (req, res) => {
   db.query("SELECT * FROM users", (err, result) => {
     if (err) return res.json(err);
@@ -25,9 +25,9 @@ app.get("/users", (req, res) => {
   });
 });
 
-// Routes
-const userRoutes = require("./routes/user");
-app.use("/api", userRoutes);
+// ROUTES
+app.use("/api", require("./routes/user")); // Signup + Login
+app.use("/api/articles", require("./routes/articles")); // 🔥 مقالات الأطباء
 
 // Start server
 app.listen(5000, () => {
