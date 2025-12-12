@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Inventory User</title>
+    <style>
+      body {
+        font-family: Tahoma, sans-serif;
+        background: #f3f3f3;
+        direction: rtl;
+        padding: 20px;
+      }
+      .container {
+        max-width: 900px;
+        margin: auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      .item,
+      .request {
+        background: #eee;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 6px;
+      }
+      button {
+        padding: 6px 10px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 5px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      input {
+        padding: 6px;
+        margin: 3px 0;
+        width: 50px;
+        border-radius: 4px;
+        border: 1px solid #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>المخزون المتاح</h2>
+      <div id="inventoryList"></div>
+    </div>
+
+    <div class="container">
+      <h2>طلباتك</h2>
+      <div id="userRequests"></div>
+    </div>
+
+    <script>
+      const API = "http://localhost:5000/api";
+      const user_id = 17;
+
+      // عرض جميع العناصر المتاحة
+      function loadInventory() {
+        fetch(`${API}/inventory/items/all`)
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("inventoryList");
+            list.innerHTML = "";
+            if (data.length === 0) {
+              list.innerHTML = "<p>لا توجد عناصر متاحة</p>";
+              return;
+            }
+
+            data.forEach((item) => {
+              list.innerHTML += `
+        <div class="item">
+          <b>اسم العنصر:</b> ${item.name}<br>
+          <b>الكمية المتاحة:</b> ${item.quantity}<br>
+          <b>الموقع:</b> ${item.location}<br>
+          <b>تاريخ الصلاحية:</b> ${item.expiration_date}<br>
+          <b>المتبرع:</b> ${item.donor_first_name} ${item.donor_last_name}<br>
+          <input type="number" id="qty_${item.item_id}" value="1" min="1" max="${item.quantity}">
+          <button onclick="requestItem(${item.item_id})">طلب هذا العنصر</button>
+        </div>
+      `;
+            });
+          });
+      }
+
+      // عمل طلب على عنصر
+      function requestItem(item_id) {
+        const quantity = parseInt(
+          document.getElementById(`qty_${item_id}`).value
+        );
+        fetch(`${API}/inventory/request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ item_id, user_id, quantity }),
+        })
+          .then((res) => res.json())
+          .then((d) => {
+            alert(d.msg);
+            loadUserRequests();
+          })
+          .catch((err) => console.error(err));
+      }
+
+      // عرض طلبات المستخدم
+      function loadUserRequests() {
+        fetch(`${API}/inventory/requests/forUser/${user_id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("userRequests");
+            list.innerHTML = "";
+            if (data.length === 0) {
+              list.innerHTML = "<p>لم تقم بأي طلبات</p>";
+              return;
+            }
+
+            data.forEach((r) => {
+              list.innerHTML += `
+        <div class="request">
+          <b>رقم الطلب:</b> ${r.request_id}<br>
+          <b>العنصر:</b> ${r.item_name}<br>
+          <b>الموقع:</b> ${r.location}<br>
+          <b>الكمية:</b> ${r.quantity}<br>
+          <b>الحالة:</b> ${r.status}<br>
+        </div>
+      `;
+            });
+          });
+      }
+
+      // تحميل البيانات عند فتح الصفحة
+      loadInventory();
+      loadUserRequests();
+    </script>
+  </body>
+</html>

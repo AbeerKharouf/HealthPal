@@ -83,10 +83,28 @@ const feedbackRoutes = require("./routes/feedback");
 app.use("/feedback", feedbackRoutes);
 
 
-// ROUTES
-app.use("/api", require("./routes/user")); // Signup + Login
-app.use("/api/articles", require("./routes/articles")); //  مقالات الأطباء
+
+const http = require("http").createServer(app);
+
+const { Server } = require("socket.io");
+const io = new Server(http, {
+  cors: { origin: "*" },
+});
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// Socket.IO
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+});
+
+// Routes
+app.use("/api/users", require("./routes/user"));
 app.use("/api/products", require("./routes/products"));
+app.use("/api/articles", require("./routes/articles"));
 app.use("/api/admin", require("./routes/admin"));
 
 
@@ -95,6 +113,8 @@ app.use("/drug", drugRoutes);
 
 
 
+app.use("/api", require("./routes/medicine"));
+app.use("/api", require("./routes/inventory"));
 // Start server
 app.listen(5000, () => {
   console.log("Server running on port 5000");
