@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Anonymous Therapy Chat</title>
+<style>
+    body {
+        background: #f2f3f7;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    .box {
+        padding: 15px;
+        background: white;
+        border-bottom: 1px solid #ccc;
+    }
+
+ .chat-box {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    background: #e9ecf1;
+    display: flex;
+    flex-direction: column;
+
+    min-height: 400px;   
+    max-height: 70vh;    
+}
+
+
+
+    .msg {
+        max-width: 70%;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 10px;
+        font-size: 15px;
+    }
+
+    .patient {
+        background: #d1eaff;
+        align-self: flex-start;
+    }
+
+    .therapist {
+        background: #d9ffd6;
+        align-self: flex-end;
+    }
+
+    .input-area {
+        height: 120px;
+        display: flex;
+        background: white;
+        padding: 20px;
+        border-top: 1px solid #ccc;
+    }
+
+    input, select {
+        flex: 1;
+        padding: 22px;
+        font-size: 15px;
+    }
+
+    button {
+        padding: 10px 15px;
+        margin-left: 10px;
+        background: #4b7bec;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .keep-btn { background: #20bf6b; }
+    .end-btn { background: #f7b731; }
+    .delete-btn { background: #eb3b5a; }
+</style>
+</head>
+<body>
+
+<!-- Create Session -->
+<div class="box">
+    <h3>Start Anonymous Session</h3>
+
+    <select id="therapist_id">
+        <option value="" disabled selected>Loading therapists...</option>
+    </select>
+
+    <button onclick="createSession()">Create Session</button>
+    <p id="session_msg"></p>
+
+    <hr>
+
+    <h4>Continue Existing Session</h4>
+    <input id="existing_session_id" placeholder="Enter Session ID">
+    <button onclick="continueSession()">Continue Session</button>
+    <p id="continue_msg"></p>
+</div>
+
+<!-- Patient Options -->
+<div class="box" id="options" style="display:none;">
+    <h4>Your Options</h4>
+    <button class="keep-btn" onclick="keepConversation()">Continue Chat</button>
+    <button class="end-btn" onclick="endSession()">End Session</button>
+    <button class="delete-btn" onclick="deleteConversation()">Delete Session</button>
+</div>
+
+<!-- Messages -->
+<div id="chat" class="chat-box"></div>
+
+<!-- Send Message -->
+<div class="input-area">
+    <input id="msg_input" placeholder="Type your message...">
+    <button onclick="sendPatientMessage()">Send</button>
+</div>
+
+<script>
+let currentSession = null;
+let sessionEnded = false;
+
+// Load therapists list
+async function loadTherapists() {
+    let res = await fetch("http://localhost:5000/therapists/all");
+    let data = await res.json();
+
+    let select = document.getElementById("therapist_id");
+    select.innerHTML = "";
+
+    data.forEach(t => {
+        let option = document.createElement("option");
+        option.value = t.therapist_id;
+        option.textContent = `${t.therapist_id} — ${t.email} (${t.specialty})`;
+        select.appendChild(option);
+    });
+}
+loadTherapists();
+
+// Create new session
+function createSession() {
+    const therapist_id = document.getElementById("therapist_id").value;
+
+    fetch("http://localhost:5000/anonymous-chat/create-session", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ therapist_id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        currentSession = data.session_id;
+
+        document.getElementById("session_msg").innerText =
+            "Session Created! Code: " + data.session_code + " | ID: " + data.session_id;
+
+        document.getElementById("options").style.display = "block";
+
+        loadMessages();
+    });
+}
+
+// Continue existing session
+function continueSession() {
+    const sessionId = document.getElementById("existing_session_id").value;
+
+    if (!sessionId.trim()) {
+        alert("Please enter a session ID");
+        return;
+    }
+
+    currentSession = sessionId;
+    sessionEnded = false;
+    document.getElementById("msg_input").disabled = false;
+
+    document.getElementById("continue_msg").innerText =
+        "Loaded Session #" + sessionId;
+
+    document.getElementById("options").style.display = "block";
+
+    loadMessages();
+}
+
+// Load messages
+function loadMessages() {
+    if (!currentSession) return;
+
+    fetch(`http://localhost:5000/anonymous-chat/messages/${currentSession}`)
+    .then(res => res.json())
+    .then(messages => {
+        const box = document.getElementById("chat");
+        box.innerHTML = "";
+
+        messages.forEach(msg => {
+            const div = document.createElement("div");
+            div.className = `msg ${msg.sender}`;
+            div.innerText = msg.message;
+            box.appendChild(div);
+        });
+    });
+}
+
+// Send Message
+function sendPatientMessage() {
+    if (sessionEnded) {
+        alert("Session ended. You cannot send more messages.");
+        return;
+    }
+
+    const text = document.getElementById("msg_input").value;
+    if (!text.trim()) return;
+
+    fetch("http://localhost:5000/anonymous-chat/send-message", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            session_id: currentSession,
+            sender: "patient",
+            message: text
+        })
+    })
+    .then(() => {
+        document.getElementById("msg_input").value = "";
+        loadMessages();
+    });
+}
+
+function keepConversation() { 
+    alert("You can continue chatting 🙂"); 
+}
+
+function endSession() {
+    sessionEnded = true;
+    document.getElementById("msg_input").disabled = true;
+    alert("Session ended. Messages are saved, but you cannot send more.");
+}
+
+function deleteConversation() {
+    fetch(`http://localhost:5000/anonymous-chat/delete-session/${currentSession}`, {
+        method: "DELETE"
+    })
+    .then(() => {
+        alert("Session deleted.");
+        location.reload();
+    });
+}
+</script>
+
+</body>
+</html>

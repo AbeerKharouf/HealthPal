@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Therapist Panel</title>
+
+<style>
+    body {
+        background: #f2f3f7;
+        font-family: Arial, sans-serif;
+        margin: 0; padding: 0;
+    }
+
+    .box {
+        background: #fff;
+        padding: 15px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    select, input {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        font-size: 16px;
+    }
+
+    button {
+        background: #4b7bec;
+        color: white;
+        padding: 12px 18px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+
+    .chat-box {
+        height: 60vh;
+        overflow-y: auto;
+        background: #e9ecf1;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .msg {
+        max-width: 70%;
+        padding: 10px;
+        border-radius: 10px;
+        margin: 6px 0;
+        font-size: 15px;
+    }
+
+    .patient {
+        background: #d1eaff;
+        align-self: flex-start;
+    }
+
+    .therapist {
+        background: #d9ffd6;
+        align-self: flex-end;
+    }
+
+    .send-area {
+        display: flex;
+        background: #fff;
+        padding: 10px;
+        border-top: 1px solid #ccc;
+    }
+
+    #msg_input {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+    }
+
+</style>
+</head>
+
+<body>
+
+<div class="box">
+    <h2>Therapist Panel</h2>
+
+    <label>Select Therapist:</label>
+    <select id="therapistSelect" onchange="loadSessions()">
+        <option value="">Loading...</option>
+    </select>
+
+    <label>Select Session:</label>
+    <select id="sessionSelect">
+        <option value="">Select therapist first</option>
+    </select>
+
+    <button onclick="loadMessages()">Load Conversation</button>
+</div>
+
+<div class="chat-box" id="chat"></div>
+
+<div class="send-area">
+    <input id="msg_input" placeholder="Type therapist reply...">
+    <button onclick="sendTherapistMessage()">Send</button>
+</div>
+
+<script>
+let currentSession = null;
+
+// 1️⃣ Load all therapists
+fetch("http://localhost:5000/therapists/all")
+    .then(res => res.json())
+    .then(data => {
+        const select = document.getElementById("therapistSelect");
+        select.innerHTML = `<option value="">Select Therapist</option>`;
+
+        data.forEach(t => {
+            select.innerHTML += `
+                <option value="${t.therapist_id}">
+                    ${t.therapist_id} — ${t.email} (${t.specialty})
+                </option>`;
+        });
+    });
+
+
+// 2️⃣ Load sessions for selected therapist
+function loadSessions() {
+    const therapist_id = document.getElementById("therapistSelect").value;
+
+    fetch(`http://localhost:5000/anonymous-chat/sessions/${therapist_id}`)
+    .then(res => res.json())
+    .then(data => {
+        const select = document.getElementById("sessionSelect");
+
+        // If response is empty
+        if (!data || data.length === 0) {
+            select.innerHTML = `<option>No sessions found</option>`;
+            return;
+        }
+
+        // Try to detect session_id automatically  
+        select.innerHTML = `<option value="">Select Session</option>`;
+
+        data.forEach(s => {
+            let id = s.session_id || s.id || s.SESSION_ID;
+            let code = s.session_code || s.code || "";
+            let status = s.status || s.session_status || "";
+
+            if (!id) return; // skip if no id found
+
+            select.innerHTML += `
+                <option value="${id}">
+                    Session #${id} ${code ? "— " + code : ""} ${status ? "— " + status : ""}
+                </option>`;
+        });
+    });
+
+}
+
+
+// 3️⃣ Load messages for selected session
+function loadMessages() {
+    currentSession = document.getElementById("sessionSelect").value;
+
+    if (!currentSession) {
+        alert("Select a session first");
+        return;
+    }
+
+    fetch(`http://localhost:5000/anonymous-chat/messages/${currentSession}`)
+        .then(res => res.json())
+        .then(data => {
+            const chat = document.getElementById("chat");
+            chat.innerHTML = "";
+
+            data.forEach(msg => {
+                const div = document.createElement("div");
+                div.className = `msg ${msg.sender}`;
+                div.innerText = msg.message;
+                chat.appendChild(div);
+            });
+
+            chat.scrollTop = chat.scrollHeight;
+        });
+}
+
+
+// 4️⃣ Therapist sends reply
+function sendTherapistMessage() {
+    const text = document.getElementById("msg_input").value;
+    if (!text.trim()) return;
+
+    fetch("http://localhost:5000/anonymous-chat/send-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            session_id: currentSession,
+            sender: "therapist",
+            message: text
+        })
+    })
+    .then(() => {
+        document.getElementById("msg_input").value = "";
+        loadMessages();
+    });
+}
+
+</script>
+
+</body>
+</html>
