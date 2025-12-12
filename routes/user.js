@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+console.log("🔥 USER ROUTES LOADED");
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -25,6 +26,7 @@ router.post("/signup", async (req, res) => {
       [first_name, last_name, email, hashedPassword, role]
     );
     const userId = userResult.insertId;
+
 
     // إدخال بيانات خاصة حسب الدور
     if (role === "doctor") {
