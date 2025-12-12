@@ -29,7 +29,7 @@ app.get("/users", (req, res) => {
 app.use("/api", require("./routes/user")); // Signup + Login
 app.use("/api/articles", require("./routes/articles")); //  مقالات الأطباء
 app.use("/api/products", require("./routes/products"));
-
+app.use("/api/admin", require("./routes/admin"));
 
 // Start server
 app.listen(5000, () => {
