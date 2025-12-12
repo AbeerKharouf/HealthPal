@@ -27,7 +27,9 @@ app.get("/users", (req, res) => {
 
 // ROUTES
 app.use("/api", require("./routes/user")); // Signup + Login
-app.use("/api/articles", require("./routes/articles")); // 🔥 مقالات الأطباء
+app.use("/api/articles", require("./routes/articles")); //  مقالات الأطباء
+app.use("/api/products", require("./routes/products"));
+
 
 // Start server
 app.listen(5000, () => {
