@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Donor Dashboard</title>
+    <style>
+      body {
+        font-family: Tahoma, sans-serif;
+        background: #f3f3f3;
+        direction: rtl;
+        padding: 20px;
+      }
+      .container {
+        max-width: 900px;
+        margin: auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      .item,
+      .request {
+        background: #eee;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 6px;
+      }
+      button {
+        padding: 6px 10px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 5px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      input {
+        padding: 6px;
+        margin: 3px 0;
+        width: 50px;
+        border-radius: 4px;
+        border: 1px solid #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>إضافة عنصر جديد</h2>
+      <input type="text" id="item_name" placeholder="اسم العنصر" />
+      <input type="number" id="item_qty" placeholder="الكمية" />
+      <input type="text" id="item_location" placeholder="الموقع" />
+      <input type="date" id="item_exp" />
+      <button onclick="addItem()">إضافة العنصر</button>
+    </div>
+
+    <div class="container">
+      <h2>عناصر قمت بإضافتها</h2>
+      <div id="itemsList"></div>
+    </div>
+
+    <div class="container">
+      <h2>الطلبات على عناصر قمت بإضافتها</h2>
+      <div id="requestsList"></div>
+    </div>
+
+    <script>
+      const API = "http://localhost:5000/api";
+      const donor_id = 17;
+
+      // إضافة عنصر
+      function addItem() {
+        const name = document.getElementById("item_name").value;
+        const quantity = parseInt(document.getElementById("item_qty").value);
+        const location = document.getElementById("item_location").value;
+        const expiration_date = document.getElementById("item_exp").value;
+        if (!name || !quantity || !location || !expiration_date) {
+          alert("اكمل جميع الحقول");
+          return;
+        }
+
+        fetch(`${API}/inventory/add`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, quantity, location, expiration_date }),
+        })
+          .then((res) => res.json())
+          .then((d) => {
+            alert(d.msg);
+            loadItems();
+            loadRequests();
+          })
+          .catch((err) => console.error(err));
+      }
+
+      // عرض عناصر donor
+      function loadItems() {
+        fetch(`${API}/inventory/items/forDonor/${donor_id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("itemsList");
+            list.innerHTML = "";
+            if (data.length === 0) {
+              list.innerHTML = "<p>لا توجد عناصر</p>";
+              return;
+            }
+
+            data.forEach((item) => {
+              list.innerHTML += `
+        <div class="item">
+          <b>اسم العنصر:</b> ${item.name}<br>
+          <b>الكمية:</b> ${item.quantity}<br>
+          <b>الموقع:</b> ${item.location}<br>
+          <b>تاريخ الصلاحية:</b> ${item.expiration_date}</b>
+        </div>
+      `;
+            });
+          });
+      }
+
+      // عرض الطلبات على عناصر donor
+      function loadRequests() {
+        fetch(`${API}/inventory/requests/forDonor/${donor_id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("requestsList");
+            list.innerHTML = "";
+            if (data.length === 0) {
+              list.innerHTML = "<p>لا توجد طلبات</p>";
+              return;
+            }
+
+            data.forEach((r) => {
+              list.innerHTML += `
+        <div class="request">
+          <b>رقم الطلب:</b> ${r.request_id}<br>
+          <b>المستخدم:</b> ${r.user_first_name} ${r.user_last_name}<br>
+          <b>العنصر:</b> ${r.item_name}<br>
+          <b>الموقع:</b> ${r.location}<br>
+          <b>الكمية:</b> ${r.quantity}<br>
+          <b>الحالة:</b> ${r.status}<br>
+          <button onclick="updateStatus(${r.request_id}, 'approved')">الموافقة</button>
+          <button onclick="updateStatus(${r.request_id}, 'rejected')">رفض</button>
+        </div>
+      `;
+            });
+          });
+      }
+
+      // تحديث حالة الطلب
+      function updateStatus(request_id, status) {
+        fetch(`${API}/inventory/request/${request_id}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        })
+          .then((res) => res.json())
+          .then((d) => {
+            alert(d.msg);
+            loadRequests();
+          })
+          .catch((err) => console.error(err));
+      }
+
+      // تحميل البيانات عند فتح الصفحة
+      loadItems();
+      loadRequests();
+    </script>
+  </body>
+</html>
