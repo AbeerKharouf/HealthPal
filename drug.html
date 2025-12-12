@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drug Info - HealthPal</title>
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#f6f7fb;
+      margin:0;
+      padding:30px;
+      color:#111;
+    }
+    .card{
+      max-width:820px;
+      margin:auto;
+      background:#fff;
+      border-radius:14px;
+      box-shadow:0 10px 25px rgba(0,0,0,.08);
+      padding:22px;
+    }
+    h1{
+      margin:0 0 8px 0;
+      font-size:22px;
+    }
+    .sub{
+      margin:0 0 18px 0;
+      color:#666;
+      font-size:14px;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin:16px 0 12px;
+    }
+    input{
+      flex:1;
+      min-width:240px;
+      padding:12px 12px;
+      border:1px solid #ddd;
+      border-radius:10px;
+      font-size:15px;
+      outline:none;
+    }
+    input:focus{ border-color:#3b82f6; }
+    button{
+      padding:12px 14px;
+      border:none;
+      border-radius:10px;
+      background:#3b82f6;
+      color:#fff;
+      cursor:pointer;
+      font-size:15px;
+    }
+    button:disabled{
+      background:#9bbcf7;
+      cursor:not-allowed;
+    }
+    .hint{
+      font-size:13px;
+      color:#666;
+      margin-top:6px;
+    }
+    .pill{
+      display:inline-block;
+      background:#eef2ff;
+      color:#334155;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      margin-left:6px;
+    }
+    .status{
+      margin-top:12px;
+      font-weight:bold;
+    }
+    .status.error{ color:#c0392b; }
+    .status.ok{ color:#167d2a; }
+
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+      margin-top:16px;
+    }
+    .box{
+      border:1px solid #eee;
+      border-radius:12px;
+      padding:14px;
+      background:#fafafa;
+    }
+    .box h3{
+      margin:0 0 10px 0;
+      font-size:16px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .box p{
+      margin:0;
+      white-space:pre-wrap;
+      line-height:1.45;
+      font-size:14px;
+      color:#222;
+    }
+    .muted{ color:#777; font-size:12px; margin-top:10px; }
+    .footer{
+      margin-top:16px;
+      font-size:12px;
+      color:#777;
+    }
+    .badge{
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:#e8f5e9;
+      color:#1b5e20;
+      display:inline-block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>Drug Information</h1>
+    <p class="sub">
+      Enter an active ingredient (e.g., <b>ibuprofen</b>, <b>paracetamol</b>) and get usage, warnings, and side effects.
+      <span class="pill">External API</span>
+    </p>
+
+    <div class="row">
+      <input id="drugName" type="text" placeholder="Type drug active ingredient..." />
+      <button id="searchBtn">Search</button>
+    </div>
+
+    <div class="hint">Tip: use lowercase English letters for best results (e.g., "ibuprofen").</div>
+
+    <div id="status" class="status"></div>
+
+    <div id="result" class="grid" style="display:none;">
+      <div class="box">
+        <h3>💊 Usage / Indications</h3>
+        <p id="usageText"></p>
+      </div>
+
+      <div class="box">
+        <h3>⚠️ Warnings</h3>
+        <p id="warningsText"></p>
+      </div>
+
+      <div class="box">
+        <h3>🧾 Side Effects (Adverse Reactions)</h3>
+        <p id="sideEffectsText"></p>
+      </div>
+
+      <div class="footer">
+        <span class="badge">Source: FDA Drug Label API</span>
+        <div class="muted">This information is for educational purposes and does not replace medical advice.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const API_BASE = "http://localhost:5000"; // عدليها إذا البورت أو الدومين مختلف
+  const drugName = document.getElementById("drugName");
+  const searchBtn = document.getElementById("searchBtn");
+  const statusEl = document.getElementById("status");
+
+  const resultEl = document.getElementById("result");
+  const usageText = document.getElementById("usageText");
+  const warningsText = document.getElementById("warningsText");
+  const sideEffectsText = document.getElementById("sideEffectsText");
+
+  function toText(value){
+    // API ممكن يرجع Array أو String
+    if (Array.isArray(value)) return value.join("\n• ");
+    if (typeof value === "string") return value;
+    return "Not available";
+  }
+
+  async function searchDrug(){
+    const name = drugName.value.trim();
+    statusEl.className = "status";
+    resultEl.style.display = "none";
+
+    if(!name){
+      statusEl.textContent = "Please enter a drug name.";
+      statusEl.classList.add("error");
+      return;
+    }
+
+    searchBtn.disabled = true;
+    statusEl.textContent = "Loading...";
+    statusEl.classList.add("ok");
+
+    try{
+      const res = await fetch(`${API_BASE}/drug/info?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+
+      if(!res.ok){
+        statusEl.textContent = data.msg || "Drug not found.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      statusEl.textContent = `Found results for: ${name}`;
+      statusEl.className = "status ok";
+
+      usageText.textContent = toText(data.usage);
+      warningsText.textContent = toText(data.warnings);
+      sideEffectsText.textContent = toText(data.side_effects);
+
+      // تحسين عرض القوائم إذا كانت Array
+      if (Array.isArray(data.usage)) usageText.textContent = "• " + data.usage.join("\n• ");
+      if (Array.isArray(data.warnings)) warningsText.textContent = "• " + data.warnings.join("\n• ");
+      if (Array.isArray(data.side_effects)) sideEffectsText.textContent = "• " + data.side_effects.join("\n• ");
+
+      resultEl.style.display = "grid";
+
+    }catch(err){
+      statusEl.textContent = "Error connecting to API. Make sure the server is running and CORS is enabled.";
+      statusEl.className = "status error";
+    }finally{
+      searchBtn.disabled = false;
+    }
+  }
+
+  searchBtn.addEventListener("click", searchDrug);
+  drugName.addEventListener("keydown", (e) => {
+    if(e.key === "Enter") searchDrug();
+  });
+</script>
+
+</body>
+</html>

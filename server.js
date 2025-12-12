@@ -6,7 +6,7 @@ const db = require("./config/db");
 // Routes
 const userRoutes = require("./routes/user");
 const mentalHealth = require("./routes/mentalHealth");
-const userRoutes = require("./routes/user");
+
 
 const app = express();
 
@@ -88,6 +88,12 @@ app.use("/api", require("./routes/user")); // Signup + Login
 app.use("/api/articles", require("./routes/articles")); //  مقالات الأطباء
 app.use("/api/products", require("./routes/products"));
 app.use("/api/admin", require("./routes/admin"));
+
+
+const drugRoutes = require("./routes/drug");
+app.use("/drug", drugRoutes);
+
+
 
 // Start server
 app.listen(5000, () => {

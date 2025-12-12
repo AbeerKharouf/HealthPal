@@ -1,11 +1,9 @@
-// config/db.js
-const mysql = require("mysql2/promise");
-
+const mysql = require('mysql2');
 const db = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "123456",
-  database: "healthpal",
+    host:'localhost',
+    user:'root',
+    password:'123456',
+    database:'healthpai'
 });
 
-module.exports = db;
+module.exports=db;
