@@ -106,6 +106,13 @@ app.use("/api/users", require("./routes/user"));
 app.use("/api/products", require("./routes/products"));
 app.use("/api/articles", require("./routes/articles"));
 app.use("/api/admin", require("./routes/admin"));
+
+
+const drugRoutes = require("./routes/drug");
+app.use("/drug", drugRoutes);
+
+
+
 app.use("/api", require("./routes/medicine"));
 app.use("/api", require("./routes/inventory"));
 // Start server
