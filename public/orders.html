@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Medicine Delivery</title>
+    <style>
+      body {
+        font-family: Tahoma, sans-serif;
+        background: #f3f3f3;
+        margin: 0;
+        padding: 20px;
+        direction: rtl;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: 20px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #ccc;
+      }
+
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border-radius: 6px;
+        border: 1px solid #aaa;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        background: #45a049;
+      }
+
+      .request {
+        background: #eee;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- إضافة طلب دواء -->
+    <div class="container">
+      <h2>إضافة طلب دواء</h2>
+      <input type="number" id="requester_id" placeholder="رقم المستخدم" />
+      <input type="text" id="medicine_name" placeholder="اسم الدواء" />
+      <input type="number" id="quantity" placeholder="الكمية" />
+      <input type="text" id="location" placeholder="الموقع" />
+      <button onclick="addRequest()">إرسال الطلب</button>
+    </div>
+
+    <!-- عرض جميع الطلبات -->
+    <!-- <div class="container">
+      <h2>جميع الطلبات</h2>
+      <div id="list"></div>
+    </div> -->
+
+    <!-- عرض طلبات مستخدم محدد -->
+    <div class="container">
+      <h2>طلبات مستخدم محدد</h2>
+      <input
+        type="number"
+        id="user_id"
+        placeholder="رقم المستخدم لعرض طلباته"
+      />
+      <button onclick="loadUserRequests()">عرض الطلبات</button>
+      <div id="userList"></div>
+    </div>
+
+    <script>
+      const API = "http://localhost:5000/api";
+
+      // إضافة طلب دواء
+      function addRequest() {
+        const data = {
+          requester_id: parseInt(document.getElementById("requester_id").value),
+          medicine_name: document.getElementById("medicine_name").value,
+          quantity: parseInt(document.getElementById("quantity").value),
+          location: document.getElementById("location").value,
+        };
+
+        fetch(`${API}/medicine/request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+          .then((res) => res.json())
+          .then((d) => {
+            if (d.error) {
+              alert("خطأ: " + d.error.sqlMessage);
+            } else {
+              alert("تم إرسال الطلب بنجاح! رقم الطلب: " + d.request_id);
+              loadRequests();
+            }
+          })
+          .catch((err) => {
+            console.error(err);
+            alert("فشل الاتصال بالسيرفر");
+          });
+      }
+
+      // جلب جميع الطلبات
+      //   function loadRequests() {
+      //     fetch(`${API}/medicine/requests`)
+      //       .then((res) => res.json())
+      //       .then((data) => {
+      //         const list = document.getElementById("list");
+      //         list.innerHTML = "";
+
+      //         if (data.length === 0) {
+      //           list.innerHTML = "<p>لا توجد طلبات حالياً</p>";
+      //           return;
+      //         }
+
+      //         data.forEach((req) => {
+      //           list.innerHTML += `
+      //             <div class="request">
+      //               <b>الدواء:</b> ${req.medicine_name}<br>
+      //               <b>الكمية:</b> ${req.quantity}<br>
+      //               <b>الموقع:</b> ${req.location}<br>
+      //               <b>الحالة:</b> ${req.status}<br>
+      //               <b>تاريخ الإنشاء:</b> ${new Date(
+      //                 req.created_at
+      //               ).toLocaleString()}<br>
+      //             </div>
+      //           `;
+      //         });
+      //       })
+      //       .catch((err) => console.error(err));
+      //   }
+
+      // جلب طلبات مستخدم محدد
+      function loadUserRequests() {
+        const user_id = parseInt(document.getElementById("user_id").value);
+        if (!user_id) {
+          alert("أدخل رقم المستخدم");
+          return;
+        }
+
+        fetch(`${API}/medicine/requests/${user_id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("userList");
+            list.innerHTML = "";
+
+            if (data.length === 0) {
+              list.innerHTML = "<p>لا توجد طلبات لهذا المستخدم</p>";
+              return;
+            }
+
+            data.forEach((req) => {
+              list.innerHTML += `
+          <div class="request">
+            <b>رقم الطلب:</b> ${req.request_id}<br>
+            <b>الدواء:</b> ${req.medicine_name}<br>
+            <b>الكمية:</b> ${req.quantity}<br>
+            <b>الموقع:</b> ${req.location}<br>
+            <b>الحالة:</b> <span style="color: ${
+              req.status === "pending"
+                ? "orange"
+                : req.status === "matched"
+                ? "green"
+                : req.status === "delivered"
+                ? "blue"
+                : "red"
+            }">${req.status}</span><br>
+            <b>تاريخ الإنشاء:</b> ${new Date(
+              req.created_at
+            ).toLocaleString()}<br>
+          </div>
+        `;
+            });
+          })
+          .catch((err) => console.error(err));
+      }
+
+      // تحميل جميع الطلبات عند فتح الصفحة
+      loadRequests();
+    </script>
+  </body>
+</html>

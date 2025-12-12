@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <title>لوحة المتبرع / الدكتور</title>
+    <style>
+      body {
+        font-family: Tahoma, sans-serif;
+        background: #f3f3f3;
+        margin: 0;
+        padding: 20px;
+        direction: rtl;
+      }
+      .container {
+        max-width: 800px;
+        margin: 20px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #ccc;
+      }
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .request {
+        background: #eee;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 6px;
+      }
+      button {
+        padding: 6px 10px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 5px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      #notificationCount {
+        background: red;
+        color: white;
+        border-radius: 50%;
+        padding: 2px 8px;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>جميع طلبات الأدوية <span id="notificationCount"></span></h2>
+      <div id="allRequests"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const API = "http://localhost:5000/api";
+      const socket = io("http://localhost:5000");
+      let pendingCount = 0;
+
+      // عند استقبال إشعار طلب جديد
+      socket.on("new_request", (request) => {
+        alert(
+          `طلب جديد: ${request.medicine_name} من المستخدم ${request.requester_id}`
+        );
+        loadAllRequests(); // تحديث القائمة تلقائياً
+      });
+
+      // تحميل كل الطلبات
+      function loadAllRequests() {
+        fetch(`${API}/medicine/requests`)
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("allRequests");
+            list.innerHTML = "";
+            pendingCount = 0;
+
+            if (data.length === 0) {
+              list.innerHTML = "<p>لا توجد طلبات حالياً</p>";
+              document.getElementById("notificationCount").innerText = "";
+              return;
+            }
+
+            data.forEach((req) => {
+              if (req.status === "pending") pendingCount++;
+              list.innerHTML += `
+                        <div class="request">
+                            <b>رقم الطلب:</b> ${req.request_id}<br>
+                            <b>المستخدم:</b> ${req.requester_id}<br>
+                            <b>الدواء:</b> ${req.medicine_name}<br>
+                            <b>الكمية:</b> ${req.quantity}<br>
+                            <b>الموقع:</b> ${req.location}<br>
+                            <b>الحالة:</b> <span style="color: ${
+                              req.status === "pending"
+                                ? "orange"
+                                : req.status === "matched"
+                                ? "green"
+                                : req.status === "delivered"
+                                ? "blue"
+                                : "red"
+                            }">${req.status}</span><br>
+                            <button onclick="updateStatus(${
+                              req.request_id
+                            }, 'matched')">موافقة</button>
+                            <button onclick="updateStatus(${
+                              req.request_id
+                            }, 'delivered')">تم التوصيل</button>
+                        </div>
+                    `;
+            });
+
+            document.getElementById("notificationCount").innerText =
+              pendingCount > 0 ? pendingCount : "";
+          })
+          .catch((err) => console.error(err));
+      }
+
+      // تحديث حالة الطلب
+      function updateStatus(request_id, newStatus) {
+        fetch(`${API}/medicine/request/${request_id}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        })
+          .then((res) => res.json())
+          .then((d) => {
+            if (d.msg) {
+              alert("تم تحديث الحالة بنجاح!");
+              loadAllRequests();
+            }
+          })
+          .catch((err) => console.error(err));
+      }
+
+      loadAllRequests();
+    </script>
+  </body>
+</html>
