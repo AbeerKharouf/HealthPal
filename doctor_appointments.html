@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Appointments</title>
+    <style>
+        body { font-family: Arial; background: #f7f7f7; padding: 20px; }
+        .container { background: white; padding: 20px; width: 600px; margin: auto; border-radius: 8px; }
+        input, button { padding: 10px; margin: 5px 0; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #eee; }
+        .approve { background: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+        .reject { background: #e63946; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>📅 Doctor Appointment Dashboard</h2>
+
+    <label>Enter Doctor ID</label>
+    <input id="doctor_id" type="number" placeholder="Example: 2">
+
+    <button onclick="loadPending()">View Pending Appointments</button>
+
+    <div id="results"></div>
+</div>
+
+<script>
+
+// =============================
+// Load Pending Appointments
+// =============================
+function loadPending() {
+    const id = document.getElementById("doctor_id").value;
+
+    if (!id) {
+        alert("Please enter Doctor ID");
+        return;
+    }
+
+    fetch(`http://localhost:5000/appointments/pending/${id}`)
+        .then(res => res.json())
+        .then(data => displayAppointments(data))
+        .catch(err => alert("Error connecting to the server"));
+}
+
+// =============================
+// Display Appointments in a Table
+// =============================
+function displayAppointments(list) {
+    if (list.length === 0) {
+        document.getElementById("results").innerHTML =
+            "<p>No pending appointments for this doctor.</p>";
+        return;
+    }
+
+    let table = `
+        <table>
+            <tr>
+                <th>Patient Name</th>
+                <th>Phone</th>
+                <th>Date & Time</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+    `;
+
+    list.forEach(a => {
+        table += `
+            <tr>
+                <td>${a.patient_first_name} ${a.patient_last_name}</td>
+                <td>${a.patient_phone}</td>
+                <td>${a.appointment_datetime}</td>
+                <td>${a.notes || '-'}</td>
+                <td>
+                    <button class="approve" onclick="approve(${a.id})"> Approve</button>
+                    <button class="reject" onclick="reject(${a.id})"> Reject</button>
+                </td>
+            </tr>
+        `;
+    });
+
+    table += "</table>";
+    document.getElementById("results").innerHTML = table;
+}
+
+// =============================
+// Approve Appointment
+// =============================
+function approve(id) {
+    fetch(`http://localhost:5000/appointments/approve/${id}`, { method: "PUT" })
+        .then(res => res.json())
+        .then(() => {
+            alert("Appointment Approved ✔");
+            loadPending();
+        });
+}
+
+// =============================
+// Reject Appointment
+// =============================
+function reject(id) {
+    fetch(`http://localhost:5000/appointments/reject/${id}`, { method: "PUT" })
+        .then(res => res.json())
+        .then(() => {
+            alert("Appointment Rejected ");
+            loadPending();
+        });
+}
+
+</script>
+
+</body>
+</html>
