@@ -1,0 +1,191 @@
+const express = require("express");
+const router = express.Router();
+const db = require("../config/db");
+
+console.log("🔥 medicalCases.js LOADED");
+
+// ============================================
+// 1) إضافة تحديث جديد على الحالة (Medical History)
+// POST /medical-cases/:caseId/history
+// ============================================
+router.post("/:caseId/history", (req, res) => {
+  const caseId = req.params.caseId;
+  const { doctor_id, update_title, update_text, status_after } = req.body;
+
+  if (!update_text) {
+    return res.status(400).json({ msg: "update_text is required" });
+  }
+
+  // تأكيد أن الحالة موجودة
+  const checkCase = `SELECT * FROM medical_cases WHERE case_id = ?`;
+
+  db.query(checkCase, [caseId], (err, caseResult) => {
+    if (err) return res.status(500).json(err);
+    if (caseResult.length === 0) {
+      return res.status(404).json({ msg: "Medical case not found" });
+    }
+
+    // إدخال التحديث
+    const insertQuery = `
+      INSERT INTO medical_history (case_id, doctor_id, update_title, update_text, status_after)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      insertQuery,
+      [caseId, doctor_id || null, update_title || null, update_text, status_after || null],
+      (err, result) => {
+        if (err) return res.status(500).json(err);
+
+        // لو الدكتور غيّر حالة الحالة
+        if (status_after) {
+          const updateStatus = `
+            UPDATE medical_cases
+            SET status = ?
+            WHERE case_id = ?
+          `;
+          db.query(updateStatus, [status_after, caseId]);
+        }
+
+        res.json({
+          msg: "Medical history added successfully",
+          history_id: result.insertId
+        });
+      }
+    );
+  });
+});
+
+// ============================================
+// 2) جلب كل التحديثات (History Timeline)
+// GET /medical-cases/:caseId/history
+// ============================================
+router.get("/:caseId/history", (req, res) => {
+  const caseId = req.params.caseId;
+
+  const query = `
+    SELECT 
+      h.history_id,
+      h.update_title,
+      h.update_text,
+      h.status_after,
+      h.created_at,
+      d.first_name AS doctor_first_name,
+      d.last_name AS doctor_last_name
+    FROM medical_history h
+    LEFT JOIN doctor d ON h.doctor_id = d.doctor_id
+    WHERE h.case_id = ?
+    ORDER BY h.created_at DESC
+  `;
+
+  db.query(query, [caseId], (err, rows) => {
+    if (err) return res.status(500).json(err);
+
+    res.json(rows);
+  });
+});
+
+// ============================================
+// 3) جلب Patient Profile كامل
+// GET /medical-cases/:caseId/profile
+// ============================================
+router.get("/:caseId/profile", (req, res) => {
+  const caseId = req.params.caseId;
+
+  const caseQuery = `
+    SELECT 
+      c.case_id,
+      c.case_title,
+      c.case_description,
+      c.total_cost,
+      c.amount_collected,
+      c.status,
+      c.created_at,
+
+      p.patient_id,
+      u.first_name AS patient_first_name,
+      u.last_name  AS patient_last_name
+
+    FROM medical_cases c
+    JOIN patient p ON c.patient_id = p.patient_id
+    JOIN users   u ON p.user_id   = u.user_id
+    WHERE c.case_id = ?
+  `;
+
+  db.query(caseQuery, [caseId], (err, caseRows) => {
+    if (err) return res.status(500).json(err);
+    if (caseRows.length === 0) {
+      return res.status(404).json({ msg: "Medical case not found" });
+    }
+
+    const caseData = caseRows[0];
+
+    const historyQuery = `
+      SELECT 
+        h.history_id,
+        h.update_title,
+        h.update_text,
+        h.status_after,
+        h.created_at,
+        d.first_name AS doctor_first_name,
+        d.last_name  AS doctor_last_name
+      FROM medical_history h
+      LEFT JOIN doctor d ON h.doctor_id = d.doctor_id
+      WHERE h.case_id = ?
+      ORDER BY h.created_at DESC
+    `;
+
+    db.query(historyQuery, [caseId], (err2, historyRows) => {
+      if (err2) return res.status(500).json(err2);
+
+      const progress = Math.round(
+        (caseData.amount_collected / caseData.total_cost) * 100
+      );
+
+      res.json({
+        case: {
+          ...caseData,
+          progress_percent: progress
+        },
+        history: historyRows
+      });
+    });
+  });
+});
+
+router.get("/history/all", (req, res) => {
+  const query = `
+    SELECT 
+      mh.history_id,
+      mh.case_id,
+      mh.update_title,
+      mh.update_text,
+      mh.status_after,
+      mh.created_at,
+
+      -- معلومات الطبيب
+      d.doctor_id,
+      d.first_name AS doctor_first_name,
+      d.last_name AS doctor_last_name,
+      d.specialty,
+
+      -- معلومات حالة المريض
+      mc.case_title,
+      mc.case_description,
+      mc.patient_id
+
+    FROM medical_history mh
+    JOIN doctor d ON mh.doctor_id = d.doctor_id
+    JOIN medical_cases mc ON mh.case_id = mc.case_id
+
+    ORDER BY mh.created_at DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json(err);
+    res.json(results);
+  });
+});
+
+
+module.exports = router;

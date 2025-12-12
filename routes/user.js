@@ -54,6 +54,41 @@ router.post("/signup", async (req, res) => {
     console.error("Error in /signup:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
+/* ===================================
+                REGISTER
+   =================================== */
+router.post("/register", (req, res) => {
+  const { first_name, last_name, email, password, role } = req.body;
+
+  // Validate required fields
+if (!first_name || !last_name || !email || !password || !role) {
+  return res.status(400).json({ msg: "All fields are required" });
+}
+
+  // Check if user exists
+  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
+    if (err) return res.status(500).json(err);
+
+    if (results.length > 0) {
+      return res.status(400).json({ msg: "Email already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = bcrypt.hashSync(password, 10);
+
+    // Insert new user
+    db.query(
+      "INSERT INTO users (first_name, last_name, email, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+      [first_name, last_name, email, hashedPassword, role],
+      (err, result) => {
+        if (err) {
+          console.log("MYSQL ERROR:", err);
+          return res.status(500).json(err);
+        }
+        res.json({ msg: "User registered successfully" });
+      }
+    );
+  });
 });
 
 // POST /api/login
@@ -82,5 +117,5 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
+});
 module.exports = router;

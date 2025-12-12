@@ -3,7 +3,10 @@ const cors = require("cors");
 const path = require("path");
 const db = require("./config/db");
 
+const userRoutes = require("./routes/user");
+
 const app = express();
+
 
 // Middleware
 app.use(cors());
@@ -17,6 +20,7 @@ app.get("/", (req, res) => {
   res.send("HealthPal API is running...");
 });
 
+
 // Example: Get all users
 app.get("/users", (req, res) => {
   db.query("SELECT * FROM users", (err, result) => {
@@ -24,6 +28,30 @@ app.get("/users", (req, res) => {
     res.json(result);
   });
 });
+const appointmentsRouter = require("./routes/appointments");
+app.use("/appointments", appointmentsRouter);
+
+
+app.use("/api", userRoutes);
+
+
+const doctorRouter = require("./routes/doctor");
+app.use("/doctor", doctorRouter);
+
+const medicalCasesRouter = require("./routes/medicalCases");
+app.use("/medical-cases", medicalCasesRouter);
+
+const donationsRouter = require("./routes/donations");
+app.use("/donate", donationsRouter);
+
+const medicalCasesRoutes = require("./routes/medicalHistory");
+app.use("/medical-cases", medicalCasesRoutes);
+
+app.use("/invoices", require("./routes/invoices"));
+
+const feedbackRoutes = require("./routes/feedback");
+app.use("/feedback", feedbackRoutes);
+
 
 // ROUTES
 app.use("/api", require("./routes/user")); // Signup + Login
